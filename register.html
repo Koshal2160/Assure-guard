@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - AssignGuard</title>
+    <meta name="description" content="Create an account on AssignGuard to submit and monitor your assignments.">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="navbar">
+    <a href="index.html" class="logo">Assign<span>Guard</span></a>
+    <nav>
+        <a href="login.html">Login</a>
+        <a href="register.html" class="active">Register</a>
+    </nav>
+</header>
+
+<main class="auth-container">
+    <div class="auth-card">
+        <h2>Create account ✨</h2>
+        <p class="subtitle">Register to start submitting and checking assignments</p>
+
+        <form id="registerForm">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" placeholder="Choose a username" autocomplete="username" required>
+            </div>
+            <div class="form-group">
+                <label for="roll_no">Roll Number</label>
+                <input type="text" id="roll_no" placeholder="Enter your roll number" required>
+            </div>
+            <div class="form-group">
+                <label for="branch">Branch / Department</label>
+                <input type="text" id="branch" placeholder="e.g. Computer Science" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="Create a strong password" autocomplete="new-password" required>
+            </div>
+            <div class="form-group">
+                <label for="confirmPassword">Confirm Password</label>
+                <input type="password" id="confirmPassword" placeholder="Re-enter your password" autocomplete="new-password" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-full" id="registerBtn">
+                <span class="spinner"></span>
+                <span class="btn-text">Create Account</span>
+            </button>
+        </form>
+
+        <div class="alert alert-success" id="successAlert">✅ Account created! Redirecting to login...</div>
+        <div class="alert alert-error" id="errorAlert">❌ <span id="errorMsg">Registration failed</span></div>
+
+        <div class="auth-footer">
+            Already have an account? <a href="login.html">Sign in</a>
+        </div>
+    </div>
+</main>
+
+<script>
+    // Redirect if already logged in
+    if (localStorage.getItem('token')) {
+        window.location.href = 'dashboard.html';
+    }
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('registerBtn');
+        const successAlert = document.getElementById('successAlert');
+        const errorAlert = document.getElementById('errorAlert');
+
+        successAlert.classList.remove('show');
+        errorAlert.classList.remove('show');
+
+        const username = document.getElementById('username').value.trim();
+        const roll_no = document.getElementById('roll_no').value.trim();
+        const branch = document.getElementById('branch').value.trim();
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (!roll_no || !branch) {
+            document.getElementById('errorMsg').textContent = 'Roll number and branch are required.';
+            errorAlert.classList.add('show');
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            document.getElementById('errorMsg').textContent = 'Passwords do not match!';
+            errorAlert.classList.add('show');
+            return;
+        }
+
+        if (password.length < 6) {
+            document.getElementById('errorMsg').textContent = 'Password must be at least 6 characters.';
+            errorAlert.classList.add('show');
+            return;
+        }
+
+        btn.classList.add('loading');
+
+        try {
+            const res = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password, roll_no, branch })
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                successAlert.classList.add('show');
+                setTimeout(() => { window.location.href = 'login.html'; }, 1500);
+            } else {
+                document.getElementById('errorMsg').textContent = data.error || 'Registration failed';
+                errorAlert.classList.add('show');
+            }
+        } catch (err) {
+            document.getElementById('errorMsg').textContent = 'Cannot connect to server. Is the server running?';
+            errorAlert.classList.add('show');
+        } finally {
+            btn.classList.remove('loading');
+        }
+    });
+</script>
+
+</body>
+</html>

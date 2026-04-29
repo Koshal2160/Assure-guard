@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AssignGuard - Detect Duplicate Assignments</title>
+    <meta name="description" content="Submit and check assignments for plagiarism. Prevent duplicate submissions with similarity detection.">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .role-select {
+            min-height: calc(100vh - 73px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 24px;
+            background: radial-gradient(ellipse at 50% 0%, rgba(108,99,255,0.13) 0%, transparent 65%);
+        }
+        .role-select .badge { display: inline-block; background: rgba(108,99,255,0.15); border: 1px solid rgba(108,99,255,0.4); color: var(--primary); border-radius: 100px; padding: 6px 18px; font-size: 0.82rem; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 24px; }
+        .role-select h1 { font-size: clamp(2rem, 5vw, 3.4rem); font-weight: 800; letter-spacing: -1px; text-align: center; line-height: 1.15; margin-bottom: 14px; }
+        .role-select > p { color: var(--text-muted); font-size: 1rem; max-width: 480px; text-align: center; margin-bottom: 52px; }
+
+        .role-cards { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
+
+        .role-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius);
+            padding: 40px 36px;
+            width: 280px;
+            text-align: center;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.25s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .role-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            transition: opacity 0.25s;
+        }
+        .role-card:hover { transform: translateY(-6px); box-shadow: 0 20px 50px rgba(0,0,0,0.4); }
+
+        .role-card.student::before { background: linear-gradient(135deg, rgba(108,99,255,0.08), transparent); }
+        .role-card.student:hover { border-color: rgba(108,99,255,0.5); }
+
+        .role-card.admin::before { background: linear-gradient(135deg, rgba(255,101,132,0.08), transparent); }
+        .role-card.admin:hover { border-color: rgba(255,101,132,0.5); }
+
+        .role-card.event::before { background: linear-gradient(135deg, rgba(76,175,140,0.08), transparent); }
+        .role-card.event:hover { border-color: rgba(76,175,140,0.5); }
+
+        .role-card.student::before, .role-card.admin::before, .role-card.event::before { opacity: 1; }
+
+        .role-icon { font-size: 3rem; margin-bottom: 18px; }
+        .role-card h2 { font-size: 1.35rem; font-weight: 800; margin-bottom: 10px; }
+        .role-card p { color: var(--text-muted); font-size: 0.88rem; line-height: 1.6; margin-bottom: 24px; }
+        .role-tag { display: inline-block; padding: 6px 20px; border-radius: 8px; font-size: 0.85rem; font-weight: 700; }
+        
+        .student .role-tag { background: rgba(108,99,255,0.15); color: var(--primary); border: 1px solid rgba(108,99,255,0.3); }
+        .admin .role-tag { background: rgba(255,101,132,0.12); color: #ff6584; border: 1px solid rgba(255,101,132,0.3); }
+        .event .role-tag { background: rgba(76,175,140,0.12); color: var(--success); border: 1px solid rgba(76,175,140,0.3); }
+    </style>
+</head>
+<body>
+
+<header class="navbar">
+    <a href="index.html" class="logo">Assign<span>Guard</span></a>
+    <nav>
+        <a href="event-login.html" style="color:var(--success);">📅 Events</a>
+        <a href="dashboard.html" id="nav-dashboard" style="display:none;margin-left:20px;">My Dashboard</a>
+        <a href="admin.html" id="nav-admin" style="display:none; color:#ff6584;margin-left:20px;">Admin Panel</a>
+        <a href="#" id="nav-logout" style="display:none;margin-left:20px;">Logout</a>
+    </nav>
+</header>
+
+<main class="role-select">
+    <div class="badge">🛡️ DBMS Assignment Project</div>
+    <h1>Welcome to <span style="background: linear-gradient(90deg, #6c63ff, #ff6584); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">AssignGuard</span></h1>
+    <p>Choose how you'd like to continue — as a student, event attendee, or administrator.</p>
+
+    <div class="role-cards">
+        <!-- Event Card -->
+        <a href="event-login.html" class="role-card event">
+            <div class="role-icon">📅</div>
+            <h2>Event Portal</h2>
+            <p>Register attendance for upcoming campus events using your roll number and branch.</p>
+            <span class="role-tag">View Events →</span>
+        </a>
+
+        <!-- Student Card -->
+        <a href="login.html" class="role-card student">
+            <div class="role-icon">🎓</div>
+            <h2>Student Portal</h2>
+            <p>Submit PDF assignments, view your marks, ask subject queries, and track your submissions.</p>
+            <span class="role-tag">Login as Student →</span>
+        </a>
+
+        <!-- Admin Card -->
+        <a href="admin-login.html" class="role-card admin">
+            <div class="role-icon">🛡️</div>
+            <h2>Admin Portal</h2>
+            <p>Manage all submissions, assign marks, detect AI content, and answer student queries.</p>
+            <span class="role-tag">Login as Admin →</span>
+        </a>
+    </div>
+</main>
+
+<script>
+    const token = localStorage.getItem('token');
+    const adminToken = localStorage.getItem('adminToken');
+    if (token) {
+        document.getElementById('nav-dashboard').style.display = 'inline';
+        document.getElementById('nav-logout').style.display = 'inline';
+    }
+    if (adminToken) {
+        document.getElementById('nav-admin').style.display = 'inline';
+        document.getElementById('nav-logout').style.display = 'inline';
+    }
+    document.getElementById('nav-logout').addEventListener('click', (e) => {
+        e.preventDefault();
+        localStorage.removeItem('token');
+        localStorage.removeItem('adminToken');
+        window.location.reload();
+    });
+</script>
+</body>
+</html>

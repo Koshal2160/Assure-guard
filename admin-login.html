@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - AssignGuard</title>
+    <meta name="description" content="Admin portal for AssignGuard assignment management.">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .admin-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 101, 132, 0.12);
+            border: 1px solid rgba(255, 101, 132, 0.35);
+            color: #ff6584;
+            border-radius: 100px;
+            padding: 6px 16px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+        .auth-card h2 { color: #ff6584; }
+        #loginBtn { background: linear-gradient(135deg, #ff6584, #c94566); box-shadow: 0 4px 20px rgba(255,101,132,0.35); }
+        #loginBtn:hover { box-shadow: 0 8px 28px rgba(255,101,132,0.5); }
+    </style>
+</head>
+<body>
+
+<header class="navbar">
+    <a href="index.html" class="logo">Assign<span>Guard</span></a>
+    <nav>
+        <a href="login.html">User Login</a>
+        <a href="admin-login.html" class="active" style="color:#ff6584;">Admin</a>
+    </nav>
+</header>
+
+<main class="auth-container">
+    <div class="auth-card">
+        <div class="admin-badge">🛡️ Admin Portal</div>
+        <h2>Admin Access</h2>
+        <p class="subtitle">Sign in with admin credentials to manage the platform</p>
+
+        <form id="adminLoginForm">
+            <div class="form-group">
+                <label for="username">Admin Username</label>
+                <input type="text" id="username" placeholder="Enter admin username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Admin Password</label>
+                <input type="password" id="password" placeholder="Enter admin password" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-full" id="loginBtn">
+                <span class="spinner"></span>
+                <span class="btn-text">🛡️ Access Admin Panel</span>
+            </button>
+        </form>
+
+        <div class="alert alert-success" id="successAlert">✅ Access granted! Redirecting...</div>
+        <div class="alert alert-error" id="errorAlert">❌ <span id="errorMsg">Invalid admin credentials</span></div>
+
+        <div class="auth-footer">
+            <a href="login.html">← Back to User Login</a>
+        </div>
+    </div>
+</main>
+
+<script>
+    if (localStorage.getItem('adminToken')) {
+        window.location.href = 'admin.html';
+    }
+
+    document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('loginBtn');
+        const successAlert = document.getElementById('successAlert');
+        const errorAlert = document.getElementById('errorAlert');
+
+        btn.classList.add('loading');
+        successAlert.classList.remove('show');
+        errorAlert.classList.remove('show');
+
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+
+        try {
+            const res = await fetch('/api/admin/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                localStorage.setItem('adminToken', data.token);
+                successAlert.classList.add('show');
+                setTimeout(() => { window.location.href = 'admin.html'; }, 1200);
+            } else {
+                document.getElementById('errorMsg').textContent = data.error || 'Login failed';
+                errorAlert.classList.add('show');
+            }
+        } catch (err) {
+            document.getElementById('errorMsg').textContent = 'Cannot connect to server.';
+            errorAlert.classList.add('show');
+        } finally {
+            btn.classList.remove('loading');
+        }
+    });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - AssignGuard</title>
+    <meta name="description" content="Admin dashboard for AssignGuard — view all assignments and run AI detection.">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* ── Admin-specific Overrides ── */
+        .admin-navbar {
+            border-bottom-color: rgba(255, 101, 132, 0.25);
+        }
+
+        .admin-logo span {
+            color: #ff6584;
+        }
+
+        .admin-hero {
+            background: linear-gradient(135deg, rgba(255, 101, 132, 0.08) 0%, transparent 60%);
+            border-bottom: 1px solid rgba(255, 101, 132, 0.15);
+            padding: 28px 40px;
+        }
+
+        .admin-hero h1 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .admin-pill {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            background: rgba(255, 101, 132, 0.15);
+            color: #ff6584;
+            border: 1px solid rgba(255, 101, 132, 0.3);
+            padding: 3px 10px;
+            border-radius: 100px;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 28px;
+        }
+
+        .tab-btn {
+            padding: 10px 22px;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            background: transparent;
+            color: var(--text-muted);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: rgba(255, 101, 132, 0.12);
+            border-color: rgba(255, 101, 132, 0.3);
+            color: #ff6584;
+        }
+
+        .tab-btn:hover:not(.active) {
+            background: var(--card-bg);
+            color: var(--text);
+        }
+
+        /* Stats */
+        .stat-card .stat-value {
+            color: #ff6584;
+        }
+
+        /* AI Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(6px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius);
+            padding: 36px;
+            max-width: 680px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+            animation: slideIn 0.25s ease;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 24px;
+        }
+
+        .modal-header h2 {
+            font-size: 1.3rem;
+            font-weight: 800;
+        }
+
+        .modal-close {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .modal-close:hover {
+            background: rgba(255, 101, 132, 0.15);
+            color: #ff6584;
+        }
+
+        /* AI Score Ring */
+        .ai-score-section {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .score-ring-wrap {
+            display: inline-block;
+            position: relative;
+            width: 140px;
+            height: 140px;
+            margin: 0 auto 16px;
+        }
+
+        .score-ring-wrap svg {
+            transform: rotate(-90deg);
+        }
+
+        .score-ring-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.07);
+            stroke-width: 10;
+        }
+
+        .score-ring-fill {
+            fill: none;
+            stroke-width: 10;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1s ease;
+        }
+
+        .score-ring-text {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .score-ring-text .score-num {
+            font-size: 2rem;
+            font-weight: 800;
+        }
+
+        .score-ring-text .score-pct {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .verdict-badge {
+            display: inline-block;
+            padding: 6px 18px;
+            border-radius: 100px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        /* Breakdown bars */
+        .breakdown-item {
+            margin-bottom: 18px;
+        }
+
+        .breakdown-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 0.88rem;
+            font-weight: 600;
+        }
+
+        .breakdown-label span:last-child {
+            color: var(--text-muted);
+            font-size: 0.82rem;
+        }
+
+        .breakdown-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.07);
+            border-radius: 100px;
+            overflow: hidden;
+        }
+
+        .breakdown-bar-fill {
+            height: 100%;
+            border-radius: 100px;
+            transition: width 0.8s ease;
+        }
+
+        .ai-details {
+            margin-top: 20px;
+        }
+
+        .ai-detail-item {
+            padding: 10px 14px;
+            background: rgba(255, 101, 132, 0.06);
+            border-left: 3px solid rgba(255, 101, 132, 0.4);
+            border-radius: 0 6px 6px 0;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .phrases-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .phrase-tag {
+            background: rgba(255, 101, 132, 0.1);
+            border: 1px solid rgba(255, 101, 132, 0.25);
+            color: #ff6584;
+            padding: 2px 10px;
+            border-radius: 100px;
+            font-size: 0.78rem;
+        }
+
+        /* Table actions */
+        .action-btn {
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-ai {
+            background: rgba(255, 101, 132, 0.12);
+            color: #ff6584;
+            border: 1px solid rgba(255, 101, 132, 0.3);
+        }
+
+        .btn-ai:hover {
+            background: rgba(255, 101, 132, 0.22);
+        }
+
+        .btn-del {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .btn-del:hover {
+            background: rgba(255, 80, 80, 0.12);
+            color: #ff6060;
+        }
+
+        .btn-save {
+            background: rgba(76, 175, 140, 0.12);
+            color: var(--success);
+            border: 1px solid rgba(76, 175, 140, 0.3);
+        }
+
+        .btn-save:hover {
+            background: rgba(76, 175, 140, 0.22);
+        }
+
+        .marks-input {
+            width: 56px;
+            padding: 5px 8px;
+            background: var(--input-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            text-align: center;
+            outline: none;
+        }
+
+        .marks-input:focus {
+            border-color: var(--success);
+        }
+
+        /* Queries */
+        .query-card {
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-sm);
+            padding: 18px 20px;
+            margin-bottom: 14px;
+        }
+
+        .query-card.unanswered {
+            border-color: rgba(255, 179, 71, 0.3);
+        }
+
+        .query-card.answered {
+            border-color: rgba(76, 175, 140, 0.3);
+        }
+
+        .q-meta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .q-text {
+            font-size: 0.93rem;
+            margin-bottom: 12px;
+        }
+
+        .answer-box textarea {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--input-bg);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.88rem;
+            resize: vertical;
+            min-height: 70px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .answer-box textarea:focus {
+            border-color: var(--success);
+        }
+
+        .q-answer-given {
+            background: rgba(76, 175, 140, 0.07);
+            border-left: 3px solid var(--success);
+            padding: 10px 14px;
+            border-radius: 0 6px 6px 0;
+            font-size: 0.88rem;
+        }
+
+        .loading-spinner-center {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .loading-spinner-center::before {
+            content: '';
+            display: block;
+            width: 32px;
+            height: 32px;
+            border: 3px solid rgba(255, 101, 132, 0.2);
+            border-top-color: #ff6584;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin: 0 auto 12px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="navbar admin-navbar">
+        <a href="index.html" class="logo admin-logo">Assign<span>Guard</span></a>
+        <nav>
+            <span style="color: var(--text-muted); font-size:0.88rem; margin-right:8px;">🛡️ Admin</span>
+            <a href="#" id="logoutBtn" style="color:#ff6584;">Logout</a>
+        </nav>
+    </header>
+
+    <div class="admin-hero">
+        <h1>🛡️ Admin Dashboard <span class="admin-pill">ADMIN</span></h1>
+        <p style="color:var(--text-muted); margin-top:6px; font-size:0.9rem;">Monitor all users, assignments, and run AI
+            content detection.</p>
+    </div>
+
+    <main class="dashboard-container">
+
+        <!-- Stats Row -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-value" id="statUsers">—</div>
+                <div class="stat-label">Total Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statAssignments">—</div>
+                <div class="stat-label">Total Assignments</div>
+            </div>
+        </div>
+
+        <!-- Search Bar -->
+        <div style="margin-bottom: 24px; position: relative;">
+            <input type="text" id="adminSearch" placeholder="🔍 Search users, roll numbers, or assignments..."
+                style="width: 100%; max-width: 500px; padding: 12px 16px 12px 40px; background: var(--input-bg); border: 1px solid var(--card-border); border-radius: var(--radius-sm); color: var(--text); font-family: 'Inter', sans-serif;">
+            <span style="position: absolute; left: 14px; top: 12px; color: var(--text-muted);">🔍</span>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" id="tabUsers" onclick="showTab('users')">👥 Users</button>
+            <button class="tab-btn" id="tabAssignments" onclick="showTab('assignments')">📋 Assignments &amp;
+                Marks</button>
+            <button class="tab-btn" id="tabQueries" onclick="showTab('queries')">💬 Student Queries</button>
+            <button class="tab-btn" id="tabEvents" onclick="showTab('events')">📅 Events</button>
+        </div>
+
+        <!-- Users Tab -->
+        <div id="panelUsers">
+            <div class="card">
+                <h3><span class="icon">👥</span> Registered Users</h3>
+                <div id="usersContent">
+                    <div class="loading-spinner-center">Loading users...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Assignments Tab -->
+        <div id="panelAssignments" style="display:none;">
+            <div class="card">
+                <h3><span class="icon">📋</span> All Submitted Assignments &amp; Marks</h3>
+                <div id="assignmentsContent">
+                    <div class="loading-spinner-center">Loading assignments...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Queries Tab -->
+        <div id="panelQueries" style="display:none;">
+            <div class="card">
+                <h3><span class="icon">💬</span> Student Queries</h3>
+                <div id="queriesContent">
+                    <div class="loading-spinner-center">Loading queries...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Events Tab -->
+        <div id="panelEvents" style="display:none;">
+            <div class="card">
+                <h3><span class="icon">📅</span> Upcoming & Past Events</h3>
+                <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:16px;">View events and attendees
+                    managed by the Event Organizer.</p>
+                <div id="eventsContent">
+                    <div class="loading-spinner-center">Loading events...</div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- AI Detection Modal -->
+    <div class="modal-overlay" id="aiModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div>
+                    <h2>🤖 AI Content Analysis</h2>
+                    <p id="modalSubtitle" style="color:var(--text-muted); font-size:0.85rem; margin-top:4px;"></p>
+                </div>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+
+            <div id="modalContent">
+                <div class="loading-spinner-center">Analyzing assignment...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const adminToken = localStorage.getItem('adminToken');
+        if (!adminToken) window.location.href = 'admin-login.html';
+
+        document.getElementById('logoutBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            localStorage.removeItem('adminToken');
+            window.location.href = 'admin-login.html';
+        });
+
+        // ── Tab Switching ─────────────────────────────────────────────────────
+        function showTab(tab) {
+            ['users', 'assignments', 'queries', 'events'].forEach(t => {
+                document.getElementById('panel' + t.charAt(0).toUpperCase() + t.slice(1)).style.display = tab === t ? 'block' : 'none';
+                document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('active', tab === t);
+            });
+            if (tab === 'queries') loadAdminQueries();
+            if (tab === 'events') loadEvents();
+        }
+
+        // ── API Helper ────────────────────────────────────────────────────────
+        async function apiFetch(url) {
+            const res = await fetch(url, { headers: { 'Authorization': `Bearer ${adminToken}` } });
+            if (res.status === 401 || res.status === 403) {
+                localStorage.removeItem('adminToken');
+                window.location.href = 'admin-login.html';
+            }
+            return res.json();
+        }
+
+        // ── Load Stats ────────────────────────────────────────────────────────
+        async function loadStats() {
+            const data = await apiFetch('/api/admin/stats');
+            document.getElementById('statUsers').textContent = data.totalUsers ?? '—';
+            document.getElementById('statAssignments').textContent = data.totalAssignments ?? '—';
+        }
+
+        // ── Load Users ────────────────────────────────────────────────────────
+        async function loadUsers() {
+            const data = await apiFetch('/api/admin/users');
+            const container = document.getElementById('usersContent');
+            if (!data.users || data.users.length === 0) {
+                container.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">No users registered yet.</p>';
+                return;
+            }
+            let html = `<table class="submissions-table">
+            <thead><tr><th>#</th><th>Username</th><th>Roll No</th><th>Branch</th><th>Assignments</th><th>Last Submission</th></tr></thead>
+            <tbody>`;
+            data.users.forEach((u, i) => {
+                const last = u.lastSubmission ? new Date(u.lastSubmission).toLocaleDateString() : 'Never';
+                html += `<tr>
+                <td>${i + 1}</td>
+                <td>👤 ${u.username}</td>
+                <td>${u.roll_no || '—'}</td>
+                <td>${u.branch || '—'}</td>
+                <td><span class="badge-success">${u.submissionCount}</span></td>
+                <td>${last}</td>
+            </tr>`;
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        // ── Load Assignments ──────────────────────────────────────────────────
+        async function loadAssignments() {
+            const data = await apiFetch('/api/admin/assignments');
+            const container = document.getElementById('assignmentsContent');
+            if (!data.assignments || data.assignments.length === 0) {
+                container.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">No assignments submitted yet.</p>';
+                return;
+            }
+            let html = `<table class="submissions-table">
+            <thead><tr><th>#</th><th>Filename</th><th>Submitted By</th><th>Date</th><th>Marks (/ 10)</th><th>Actions</th></tr></thead>
+            <tbody>`;
+            data.assignments.forEach((a, i) => {
+                const date = new Date(a.created_at).toLocaleDateString();
+                const curMarks = a.marks !== null && a.marks !== undefined ? a.marks : '';
+                html += `<tr id="arow-${a.id}">
+                <td>${i + 1}</td>
+                <td>📄 ${a.filename}</td>
+                <td>👤 ${a.username}<br><small style="color:var(--text-muted)">${a.roll_no || ''} ${a.branch || ''}</small></td>
+                <td>${date}</td>
+                <td>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <input class="marks-input" type="number" min="0" max="10" value="${curMarks}" placeholder="—" id="marks-${a.id}">
+                        <button class="action-btn btn-save" onclick="saveMarks(${a.id})">✅ Save</button>
+                    </div>
+                </td>
+                <td style="display:flex;gap:6px;align-items:center;">
+                    <button class="action-btn btn-ai" onclick="runAICheck(${a.id}, '${a.filename}', '${a.username}')">🤖 AI</button>
+                    <button class="action-btn btn-del" onclick="deleteAssignment(${a.id}, this)">🗑️</button>
+                </td>
+            </tr>`;
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        // ── Save Marks ────────────────────────────────────────────────────────
+        async function saveMarks(id) {
+            const input = document.getElementById(`marks-${id}`);
+            const marks = input.value;
+            const res = await fetch(`/api/admin/assignments/${id}/marks`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+                body: JSON.stringify({ marks })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                input.style.borderColor = 'var(--success)';
+                setTimeout(() => input.style.borderColor = '', 1500);
+            } else {
+                alert(data.error || 'Failed to save marks');
+            }
+        }
+
+        // ── Load Admin Queries ─────────────────────────────────────────────────
+        async function loadAdminQueries() {
+            const container = document.getElementById('queriesContent');
+            const data = await apiFetch('/api/admin/queries');
+            if (!data.queries || data.queries.length === 0) {
+                container.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">No student queries yet.</p>';
+                return;
+            }
+            container.innerHTML = data.queries.map(q => `
+            <div class="query-card ${q.is_answered ? 'answered' : 'unanswered'}" id="qcard-${q.id}">
+                <div class="q-meta">
+                    <span>👤 ${q.username}</span>
+                    <span>${new Date(q.created_at).toLocaleDateString()}</span>
+                    ${q.is_answered ? '<span style="color:var(--success);font-weight:600;">✅ Answered</span>' : '<span style="color:#ffb347;font-weight:600;">⏳ Pending</span>'}
+                </div>
+                <div class="q-text">❓ ${q.question}</div>
+                ${q.is_answered
+                    ? `<div class="q-answer-given">💬 ${q.answer}<br><small style="color:var(--text-muted);">${new Date(q.answered_at).toLocaleString()}</small></div>`
+                    : `<div class="answer-box">
+                            <textarea id="ans-${q.id}" placeholder="Type your answer here..."></textarea>
+                            <div style="margin-top:8px;">
+                                <button class="action-btn btn-save" onclick="submitAnswer(${q.id})">💬 Send Answer</button>
+                            </div>
+                       </div>`
+                }
+            </div>`).join('');
+        }
+
+        // ── Submit Answer ─────────────────────────────────────────────────────
+        async function submitAnswer(id) {
+            const answerEl = document.getElementById(`ans-${id}`);
+            const answer = answerEl.value.trim();
+            if (!answer) { alert('Answer cannot be empty'); return; }
+            const res = await fetch(`/api/admin/queries/${id}/answer`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+                body: JSON.stringify({ answer })
+            });
+            if (res.ok) loadAdminQueries();
+            else { const d = await res.json(); alert(d.error || 'Failed to answer'); }
+        }
+
+        // ── Delete Assignment ─────────────────────────────────────────────────
+        async function deleteAssignment(id, btn) {
+            if (!confirm('Are you sure you want to delete this assignment?')) return;
+            btn.textContent = '...';
+            const res = await fetch(`/api/admin/assignments/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${adminToken}` }
+            });
+            if (res.ok) {
+                btn.closest('tr').remove();
+                loadStats();
+            }
+        }
+
+        // ── AI Check ──────────────────────────────────────────────────────────
+        async function runAICheck(id, filename, username) {
+            document.getElementById('modalSubtitle').textContent = `📄 ${filename} — submitted by ${username}`;
+            document.getElementById('modalContent').innerHTML = '<div class="loading-spinner-center">Analyzing content for AI patterns...</div>';
+            document.getElementById('aiModal').classList.add('show');
+
+            const data = await apiFetch(`/api/admin/assignments/${id}/ai-check`);
+            if (data.error) {
+                document.getElementById('modalContent').innerHTML = `<p style="color:var(--error);">Error: ${data.error}</p>`;
+                return;
+            }
+
+            renderAIResult(data.aiAnalysis);
+        }
+
+        function renderAIResult(r) {
+            const score = r.score;
+            const circumference = 2 * Math.PI * 54;
+            const offset = circumference - (score / 100) * circumference;
+
+            // Color by score
+            let color, verdictColor, verdictBg;
+            if (score >= 75) { color = '#ff6584'; verdictColor = '#ff6584'; verdictBg = 'rgba(255,101,132,0.12)'; }
+            else if (score >= 55) { color = '#ffb347'; verdictColor = '#ffb347'; verdictBg = 'rgba(255,179,71,0.12)'; }
+            else if (score >= 35) { color = '#6c63ff'; verdictColor = '#6c63ff'; verdictBg = 'rgba(108,99,255,0.12)'; }
+            else { color = '#4caf8c'; verdictColor = '#4caf8c'; verdictBg = 'rgba(76,175,140,0.12)'; }
+
+            const bd = r.breakdown;
+            const barColor = (s) => s >= 70 ? '#ff6584' : s >= 45 ? '#ffb347' : '#4caf8c';
+
+            let breakdownHTML = '';
+            for (const [key, val] of Object.entries(bd)) {
+                const s = val.score;
+                breakdownHTML += `
+                <div class="breakdown-item">
+                    <div class="breakdown-label">
+                        <span>${key}</span>
+                        <span>${s}% &nbsp;·&nbsp; Weight ${val.weight}</span>
+                    </div>
+                    <div class="breakdown-bar">
+                        <div class="breakdown-bar-fill" style="width:${s}%; background:${barColor(s)};"></div>
+                    </div>
+                    ${val.found && val.found.length > 0 ? `<div class="phrases-list">${val.found.map(p => `<span class="phrase-tag">${p}</span>`).join('')}</div>` : ''}
+                    ${val.density ? `<div style="font-size:0.78rem;color:var(--text-muted);margin-top:4px;">Density: ${val.density}</div>` : ''}
+                    ${val.avgLength ? `<div style="font-size:0.78rem;color:var(--text-muted);margin-top:4px;">Avg sentence: ${val.avgLength} &nbsp;·&nbsp; Std Dev: ${val.stdDev}</div>` : ''}
+                </div>`;
+            }
+
+            let detailsHTML = '';
+            if (r.details && r.details.length > 0) {
+                detailsHTML = `<div class="ai-details"><h4 style="margin-bottom:10px;font-size:0.92rem;">📌 Key Findings</h4>
+                ${r.details.map(d => `<div class="ai-detail-item">${d}</div>`).join('')}
+            </div>`;
+            }
+
+            document.getElementById('modalContent').innerHTML = `
+            <div class="ai-score-section">
+                <div class="score-ring-wrap">
+                    <svg width="140" height="140" viewBox="0 0 140 140">
+                        <circle class="score-ring-bg" cx="70" cy="70" r="54"/>
+                        <circle class="score-ring-fill" cx="70" cy="70" r="54"
+                            stroke="${color}"
+                            stroke-dasharray="${circumference}"
+                            stroke-dashoffset="${offset}"/>
+                    </svg>
+                    <div class="score-ring-text">
+                        <span class="score-num" style="color:${color};">${score}%</span>
+                        <span class="score-pct">AI Score</span>
+                    </div>
+                </div>
+                <div>
+                    <span class="verdict-badge" style="background:${verdictBg}; color:${verdictColor}; border:1px solid ${verdictColor}40;">
+                        ${r.verdict}
+                    </span>
+                </div>
+                <p style="color:var(--text-muted); font-size:0.82rem; margin-top:12px;">
+                    ${r.stats.wordCount} words &nbsp;·&nbsp; ${r.stats.sentenceCount} sentences &nbsp;·&nbsp; Avg ${r.stats.avgSentenceLength} words/sentence
+                </p>
+            </div>
+
+            <h4 style="margin-bottom:16px; font-size:0.92rem;">📊 Score Breakdown</h4>
+            ${breakdownHTML}
+
+            ${detailsHTML}
+
+            <p style="color:var(--text-muted); font-size:0.78rem; margin-top:20px; text-align:center;">
+                ⚠️ This is a heuristic estimate — use as supporting evidence, not definitive proof.
+            </p>
+        `;
+        }
+
+        function closeModal() {
+            document.getElementById('aiModal').classList.remove('show');
+        }
+
+        // Close modal on overlay click
+        document.getElementById('aiModal').addEventListener('click', function (e) {
+            if (e.target === this) closeModal();
+        });
+
+        // ── Search functionality ──────────────────────────────────────────────
+        document.getElementById('adminSearch').addEventListener('input', async (e) => {
+            const q = e.target.value.trim();
+            if (q.length < 2) {
+                if (q.length === 0) { loadUsers(); loadAssignments(); }
+                return;
+            }
+
+            const data = await apiFetch(`/api/admin/search?q=${encodeURIComponent(q)}`);
+
+            // Update users table
+            const uContainer = document.getElementById('usersContent');
+            if (data.users.length === 0) {
+                uContainer.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">No matching users.</p>';
+            } else {
+                uContainer.innerHTML = `<table class="submissions-table">
+                <thead><tr><th>#</th><th>Username</th><th>Roll No</th><th>Branch</th></tr></thead>
+                <tbody>${data.users.map((u, i) => `<tr><td>${i + 1}</td><td>👤 ${u.username}</td><td>${u.roll_no || '—'}</td><td>${u.branch || '—'}</td></tr>`).join('')}</tbody>
+            </table>`;
+            }
+
+            // Update assignments table
+            const aContainer = document.getElementById('assignmentsContent');
+            if (data.assignments.length === 0) {
+                aContainer.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">No matching assignments.</p>';
+            } else {
+                aContainer.innerHTML = `<table class="submissions-table">
+                <thead><tr><th>#</th><th>Filename</th><th>Submitted By</th><th>Marks</th><th>Actions</th></tr></thead>
+                <tbody>${data.assignments.map((a, i) => `<tr id="arow-${a.id}">
+                    <td>${i + 1}</td><td>📄 ${a.filename}</td>
+                    <td>👤 ${a.username}<br><small style="color:var(--text-muted)">${a.roll_no || ''} ${a.branch || ''}</small></td>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <input class="marks-input" type="number" min="0" max="10" value="${a.marks || ''}" id="marks-${a.id}">
+                            <button class="action-btn btn-save" onclick="saveMarks(${a.id})">✅ Save</button>
+                        </div>
+                    </td>
+                    <td style="display:flex;gap:6px;align-items:center;">
+                        <button class="action-btn btn-ai" onclick="runAICheck(${a.id}, '${a.filename}', '${a.username}')">🤖 AI</button>
+                        <button class="action-btn btn-del" onclick="deleteAssignment(${a.id}, this)">🗑️</button>
+                    </td>
+                </tr>`).join('')}</tbody>
+            </table>`;
+            }
+        });
+
+        // ── Events ────────────────────────────────────────────────────────────
+        async function loadEvents() {
+            const container = document.getElementById('eventsContent');
+            const data = await apiFetch('/api/admin/events');
+            if (!data.events || data.events.length === 0) {
+                container.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">No events found.</p>';
+                return;
+            }
+            let html = `<div style="display:flex; flex-direction:column; gap:16px;">`;
+            data.events.forEach(e => {
+                const startTime = new Date(e.event_time).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+                const endTime = e.end_time ? new Date(e.end_time).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'TBD';
+
+                html += `<div style="background:var(--input-bg); border:1px solid var(--card-border); padding:16px; border-radius:var(--radius-sm); display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <h4 style="font-size:1.05rem; margin-bottom:4px;">${e.name}</h4>
+                    <p style="color:var(--text-muted); font-size:0.85rem;">🕒 Start: ${startTime} &nbsp;—&nbsp; End: ${endTime} &nbsp;·&nbsp; 👥 ${e.attendeeCount} attendees</p>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn btn-primary" style="padding:6px 14px; font-size:0.85rem;" onclick="viewAttendees(${e.id})">View Attendees</button>
+                </div>
+            </div>`;
+            });
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        async function viewAttendees(id) {
+            const data = await apiFetch(`/api/admin/events/${id}/attendees`);
+            document.getElementById('modalSubtitle').textContent = `Event: ${data.event.name}`;
+
+            if (data.attendees.length === 0) {
+                document.getElementById('modalContent').innerHTML = '<p>No attendees yet.</p>';
+            } else {
+                let html = `<table class="submissions-table"><thead><tr><th>Roll No</th><th>Name</th><th>Branch</th><th>Time Registered</th></tr></thead><tbody>`;
+                data.attendees.forEach(a => {
+                    html += `<tr><td>${a.roll_no}</td><td>${a.student_name}</td><td>${a.branch}</td><td>${new Date(a.created_at).toLocaleTimeString()}</td></tr>`;
+                });
+                html += `</tbody></table>`;
+                document.getElementById('modalContent').innerHTML = html;
+            }
+            document.getElementById('aiModal').classList.add('show');
+        }
+
+        // ── Initialize ────────────────────────────────────────────────────────
+        loadStats();
+        loadUsers();
+        loadAssignments();
+    </script>
+
+</body>
+
+</html>

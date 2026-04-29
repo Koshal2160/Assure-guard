@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - AssignGuard</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .marks-badge { display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:100px;font-size:0.82rem;font-weight:700; }
+        .marks-badge.graded { background:rgba(76,175,140,0.12);border:1px solid rgba(76,175,140,0.3);color:var(--success); }
+        .marks-badge.pending { background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:var(--text-muted); }
+        .query-form textarea { width:100%;padding:14px 16px;background:var(--input-bg);border:1px solid rgba(255,255,255,0.08);border-radius:var(--radius-sm);color:var(--text);font-family:'Inter',sans-serif;font-size:0.93rem;outline:none;resize:vertical;min-height:100px;transition:border-color 0.2s; }
+        .query-form textarea:focus { border-color:var(--primary);box-shadow:0 0 0 3px rgba(108,99,255,0.15); }
+        .query-item { border:1px solid var(--card-border);border-radius:var(--radius-sm);padding:18px 20px;margin-bottom:14px; }
+        .query-item.answered { border-color:rgba(76,175,140,0.3); }
+        .query-meta { display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:0.8rem;color:var(--text-muted); }
+        .query-q { font-size:0.93rem;color:var(--text);margin-bottom:8px; }
+        .query-answer { background:rgba(76,175,140,0.07);border-left:3px solid var(--success);padding:10px 14px;border-radius:0 6px 6px 0;font-size:0.88rem;color:var(--text);margin-top:10px; }
+        .query-answer .ans-label { font-size:0.75rem;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px; }
+    </style>
+</head>
+<body>
+<header class="navbar">
+    <a href="index.html" class="logo">Assign<span>Guard</span></a>
+    <nav>
+        <span id="nav-username" style="color:var(--text-muted);font-size:0.9rem;"></span>
+        <a href="index.html" style="color:var(--text-muted);">Home</a>
+        <a href="#" id="nav-logout" style="color:var(--accent);">Logout</a>
+    </nav>
+</header>
+
+<main class="dashboard-container">
+    <div class="dashboard-header">
+        <h1>📋 Student Dashboard</h1>
+        <p id="welcome-msg">Submit your PDF assignment. We'll check it for duplicates automatically.</p>
+    </div>
+
+    <!-- Upload Card -->
+    <div class="card">
+        <h3><span class="icon">📤</span> Submit Assignment (PDF)</h3>
+        <div class="file-upload-area" id="dropZone">
+            <div class="upload-icon">📄</div>
+            <p><strong>Click to browse</strong> or drag & drop your PDF</p>
+            <p style="margin-top:6px;font-size:0.82rem;">Only .pdf files · Max 10MB</p>
+            <input type="file" id="pdfInput" accept=".pdf">
+        </div>
+        <div class="file-selected" id="fileSelected">📎 <span id="fileName"></span></div>
+        <div style="margin-top:20px;">
+            <button class="btn btn-primary" id="submitBtn" disabled>
+                <span class="spinner"></span>
+                <span class="btn-text">🚀 Submit Assignment</span>
+            </button>
+        </div>
+        <div class="alert alert-success" id="successAlert">✅ Assignment submitted successfully! No duplicate found.</div>
+        <div class="alert alert-error" id="errorAlert"><div>⚠️ <strong>Error:</strong><br><span id="errorMsg" style="font-size:0.88rem;"></span></div></div>
+    </div>
+
+    <!-- Submissions with Marks -->
+    <div class="card">
+        <h3><span class="icon">🗂️</span> My Submissions &amp; Marks</h3>
+        <div id="submissionsContent"><p style="color:var(--text-muted);font-size:0.9rem;">Loading...</p></div>
+    </div>
+
+    <!-- Query Section -->
+    <div class="card">
+        <h3><span class="icon">💬</span> Ask a Query</h3>
+        <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:20px;">Have a question? Ask here — the admin will respond.</p>
+        <div class="query-form">
+            <textarea id="queryText" placeholder="Type your question here..."></textarea>
+            <div style="margin-top:12px;">
+                <button class="btn btn-primary" id="submitQueryBtn">
+                    <span class="spinner"></span>
+                    <span class="btn-text">📨 Submit Query</span>
+                </button>
+            </div>
+            <div class="alert alert-success" id="querySuccess">✅ Query submitted! Admin will respond soon.</div>
+            <div class="alert alert-error" id="queryError">❌ <span id="queryErrorMsg"></span></div>
+        </div>
+        <div style="margin-top:28px;">
+            <h4 style="font-size:0.92rem;font-weight:700;margin-bottom:16px;">📬 My Queries</h4>
+            <div id="queriesContent"><p style="color:var(--text-muted);font-size:0.88rem;">Loading queries...</p></div>
+        </div>
+    </div>
+</main>
+
+<script>
+const token = localStorage.getItem('token');
+if (!token) window.location.href = 'login.html';
+
+function parseJWT(t) { try { return JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))); } catch { return null; } }
+const decoded = parseJWT(token);
+if (decoded) {
+    document.getElementById('nav-username').textContent = `👤 ${decoded.username}`;
+    document.getElementById('welcome-msg').textContent = `Hello, ${decoded.username}! Submit your PDF assignment below.`;
+}
+document.getElementById('nav-logout').addEventListener('click', e => { e.preventDefault(); localStorage.removeItem('token'); window.location.href = 'login.html'; });
+
+const pdfInput = document.getElementById('pdfInput');
+const submitBtn = document.getElementById('submitBtn');
+const fileSelected = document.getElementById('fileSelected');
+const dropZone = document.getElementById('dropZone');
+
+pdfInput.addEventListener('change', () => {
+    const f = pdfInput.files[0];
+    if (f) { document.getElementById('fileName').textContent = f.name; fileSelected.classList.add('show'); submitBtn.disabled = false; }
+    else { fileSelected.classList.remove('show'); submitBtn.disabled = true; }
+});
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('dragover');
+    const f = e.dataTransfer.files[0];
+    if (f && f.type === 'application/pdf') { const dt = new DataTransfer(); dt.items.add(f); pdfInput.files = dt.files; pdfInput.dispatchEvent(new Event('change')); }
+});
+
+submitBtn.addEventListener('click', async () => {
+    const file = pdfInput.files[0];
+    if (!file) return;
+    document.getElementById('successAlert').classList.remove('show');
+    document.getElementById('errorAlert').classList.remove('show');
+    submitBtn.classList.add('loading'); submitBtn.disabled = true;
+    const fd = new FormData(); fd.append('assignment', file);
+    try {
+        const res = await fetch('/api/assignments/submit', { method:'POST', headers:{'Authorization':`Bearer ${token}`}, body:fd });
+        const data = await res.json();
+        if (res.ok) {
+            document.getElementById('successAlert').classList.add('show');
+            pdfInput.value = ''; fileSelected.classList.remove('show');
+            loadSubmissions();
+        } else {
+            document.getElementById('errorMsg').textContent = data.similarity ? `${data.error} (Similarity: ${data.similarity})` : (data.error||'Submission failed.');
+            document.getElementById('errorAlert').classList.add('show');
+        }
+    } catch { document.getElementById('errorMsg').textContent = 'Cannot connect to server.'; document.getElementById('errorAlert').classList.add('show'); }
+    finally { submitBtn.classList.remove('loading'); submitBtn.disabled = false; }
+});
+
+async function loadSubmissions() {
+    const c = document.getElementById('submissionsContent');
+    try {
+        const res = await fetch('/api/assignments/list', { headers:{'Authorization':`Bearer ${token}`} });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        if (!data.assignments.length) { c.innerHTML='<p style="color:var(--text-muted);font-size:0.9rem;">No submissions yet.</p>'; return; }
+        c.innerHTML = `<table class="submissions-table">
+            <thead><tr><th>#</th><th>Filename</th><th>Submitted On</th><th>Marks (out of 10)</th></tr></thead>
+            <tbody>${data.assignments.map((a,i)=>`<tr>
+                <td>${i+1}</td><td>📄 ${a.filename}</td>
+                <td>${new Date(a.created_at).toLocaleString()}</td>
+                <td>${a.marks!==null&&a.marks!==undefined ? `<span class="marks-badge graded">⭐ ${a.marks} / 10</span>` : `<span class="marks-badge pending">⏳ Pending</span>`}</td>
+            </tr>`).join('')}</tbody></table>`;
+    } catch { c.innerHTML='<p style="color:var(--error);font-size:0.9rem;">Could not load submissions.</p>'; }
+}
+
+document.getElementById('submitQueryBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('submitQueryBtn');
+    const question = document.getElementById('queryText').value.trim();
+    document.getElementById('querySuccess').classList.remove('show');
+    document.getElementById('queryError').classList.remove('show');
+    if (!question) { document.getElementById('queryErrorMsg').textContent='Please write a question.'; document.getElementById('queryError').classList.add('show'); return; }
+    btn.classList.add('loading');
+    try {
+        const res = await fetch('/api/queries', { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`}, body:JSON.stringify({question}) });
+        const data = await res.json();
+        if (res.ok) { document.getElementById('querySuccess').classList.add('show'); document.getElementById('queryText').value=''; loadQueries(); }
+        else { document.getElementById('queryErrorMsg').textContent=data.error||'Failed.'; document.getElementById('queryError').classList.add('show'); }
+    } catch { document.getElementById('queryErrorMsg').textContent='Cannot connect to server.'; document.getElementById('queryError').classList.add('show'); }
+    finally { btn.classList.remove('loading'); }
+});
+
+async function loadQueries() {
+    const c = document.getElementById('queriesContent');
+    try {
+        const res = await fetch('/api/queries', { headers:{'Authorization':`Bearer ${token}`} });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        if (!data.queries.length) { c.innerHTML='<p style="color:var(--text-muted);font-size:0.88rem;">No queries yet.</p>'; return; }
+        c.innerHTML = data.queries.map(q=>`
+            <div class="query-item ${q.is_answered?'answered':''}">
+                <div class="query-meta">
+                    <span>${new Date(q.created_at).toLocaleDateString()}</span>
+                    ${q.is_answered ? '<span style="color:var(--success);font-weight:600;">✅ Answered</span>' : '<span style="color:var(--text-muted);">⏳ Awaiting answer</span>'}
+                </div>
+                <div class="query-q">❓ ${q.question}</div>
+                ${q.is_answered ? `<div class="query-answer"><div class="ans-label">Admin Response</div>${q.answer}</div>` : ''}
+            </div>`).join('');
+    } catch { c.innerHTML='<p style="color:var(--error);font-size:0.88rem;">Could not load queries.</p>'; }
+}
+
+loadSubmissions();
+loadQueries();
+</script>
+</body>
+</html>

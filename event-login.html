@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Organizer Login - AssignGuard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="navbar">
+    <a href="index.html" class="logo">Assign<span>Guard</span></a>
+    <nav>
+        <a href="index.html">Home</a>
+    </nav>
+</header>
+
+<main class="auth-container">
+    <div class="auth-card" style="border-top: 4px solid var(--success);">
+        <h2 style="color: var(--success);">Organizer Login 📅</h2>
+        <p class="subtitle">Access the Event Organizer Dashboard</p>
+
+        <form id="orgLoginForm">
+            <div class="form-group">
+                <label for="username">Organizer Username</label>
+                <input type="text" id="username" placeholder="Enter username" autocomplete="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="Enter password" autocomplete="current-password" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-full" id="loginBtn" style="background: var(--success);">
+                <span class="spinner"></span>
+                <span class="btn-text">Access Event Dashboard</span>
+            </button>
+        </form>
+
+        <div class="alert alert-error" id="errorAlert">❌ <span id="errorMsg">Invalid credentials</span></div>
+    </div>
+</main>
+
+<script>
+    if (localStorage.getItem('orgToken')) window.location.href = 'event-dashboard.html';
+
+    document.getElementById('orgLoginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('loginBtn');
+        const errorAlert = document.getElementById('errorAlert');
+        errorAlert.classList.remove('show');
+        btn.classList.add('loading');
+
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+
+        try {
+            const res = await fetch('/api/events/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                localStorage.setItem('orgToken', data.token);
+                window.location.href = 'event-dashboard.html';
+            } else {
+                document.getElementById('errorMsg').textContent = data.error || 'Login failed';
+                errorAlert.classList.add('show');
+            }
+        } catch (err) {
+            document.getElementById('errorMsg').textContent = 'Server connection error.';
+            errorAlert.classList.add('show');
+        } finally {
+            btn.classList.remove('loading');
+        }
+    });
+</script>
+
+</body>
+</html>
