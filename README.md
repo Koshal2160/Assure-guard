@@ -1,10 +1,10 @@
-# 📋 Assignment Duplicate Detector
+# 📋 Assure-guard
 
 A web-based DBMS application that detects and flags duplicate PDF assignments. Built with Node.js, Express, MySQL, and a modern web frontend.
 
 ## 🎯 Project Overview
 
-**Assignment Duplicate Detector** is designed for educational institutions to prevent plagiarism and academic dishonesty by automatically comparing student submissions against previously submitted assignments. When a student uploads a PDF, the system extracts text and compares it with all previous submissions using advanced similarity algorithms.
+**Assure-guard** is designed for educational institutions to prevent plagiarism and academic dishonesty by automatically comparing student submissions against previously submitted assignments. When a student uploads a PDF, the system extracts text and compares it with all previous submissions using advanced similarity algorithms.
 
 ### Key Features
 
